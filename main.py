@@ -1,6 +1,6 @@
 import requests
 from flask import Flask, request, jsonify,json
-from db import insert_search_data,get_buyer_searches,get_top_searches,get_top_categories
+from db import insert_search_data,get_buyer_searches,get_top_searches,get_top_categories,create_new_user
 from flask_cors import CORS
 import csv
 import os
@@ -20,12 +20,15 @@ punctuation_marks = [" ","-"]
 #     "key": "ylz3m55bkyqowt36ozgkdvvico3lip"
 # }
 new_categories = {
-"carcare" : ["cleaning", "wash","wax","polish", "kit", "foam", "microfiber", "chemical", "brush", "ceramic", "scratch", "interior", "armor", "plastic", "restorer", "trim", "coating", "compound", "remover", "shine"],
-
+    "performanceparts&accessories" : ["turbo", "exhaust", "supercharger", "intake","performance", "k&n", "spark", "plug", "premium", "filter", "protects", "models"],
+    "tires&wheels" : ["tire", "wheel", "inflator","rim", "hubcap", "inch", "portable", "pressure", "compressor", "gauge", "pump", "valve", "stem", "tires", "astroai", "caps", "tool"],
+"oils&fluids" : ["oil", "grease", "lubricant","coolant", "transmission fluid", "wiper fluid","engine oil", "transmission fluid", "brake fluid", "power steering fluid",
+    "gear oil", "antifreeze", "oil additives"],
+    "interioraccessories" : ["floor mat", "steering cover", "air freshener", "mats","organizer", "seat", "universal", "windshield", "fit", "hotor", "storage", "cushion", "card", "freshener"],
 "carelectronics&accessories" : ["GPS", "radio", "stereo", "camera", "bluetooth","phone", "holder", "mount", "charger", "air", "vent", "wireless", "adapter", "airtag", "lisen", "dashboard", "carplay", "magsafe"],
-
+"tools&equipment" : ["scanner","wrench", "jack", "screwdriver", "compressor","sockets", "screwdrivers", "floor jack", "torque wrench"],
+"carcare" : ["cleaning", "wash","wax","polish", "kit", "foam", "microfiber", "chemical", "brush", "ceramic", "scratch", "interior", "armor", "plastic", "restorer", "trim", "coating", "compound", "remover", "shine"],
 "exterioraccessories" : ["spoiler", "roof rack", "tint", "mud flaps","license", "plate", "bungee", "cords", "trailer", "frame", "twine", "silicone", "jar", "hooks", "steel", "straps"],
-
 "heavyduty&commercialvehicleequipment" : ["truck", "trailer", "diesel","tester", "circuit", "light", "breaker", "finder", "digital", "outlet", "duty", "heavy", "triangles", "warning"],
 
 "interioraccessories" : ["floor mat", "steering cover", "air freshener", "mats","organizer", "seat", "universal", "windshield", "fit", "hotor", "storage", "cushion", "card", "freshener"],
@@ -34,18 +37,11 @@ new_categories = {
 
 "motorcycle&powersports" : ["motorcycle", "bike", "mask", "hydration", "ski", "kawasaki", "backpack","helmet", "gloves", "dirt bike parts", "atv tires", "chain lube", "saddlebags", "motorbike exhaust", "bike cover", "off-road gear"],
 
-"oils&fluids" : ["oil", "grease", "lubricant","coolant", "transmission fluid", "wiper fluid","engine oil", "transmission fluid", "brake fluid", "power steering fluid",
-    "gear oil", "antifreeze", "oil additives"],
-
 "paint&paintsupplies" : ["paint", "touch", "repair", "spray", "pen", "gun", "cars", "white", "gloss","primer", "clear coat"],
 
-"performanceparts&accessories" : ["turbo", "exhaust", "supercharger", "intake","performance", "k&n", "spark", "plug", "premium", "filter", "protects", "models"],
+"replacementparts" : ["frame", "cabin", "wiper", "blades", "battery","alternator", "fuel pump", "radiator", "cv joints"],
 
-"replacementparts" : ["fram", "cabin", "wiper", "blades", "battery","alternator", "fuel pump", "radiator", "cv joints"],
 
-"tires&wheels" : ["tire", "wheel", "inflator","rim", "hubcap", "inch", "portable", "pressure", "compressor", "gauge", "pump", "valve", "stem", "tires", "astroai", "caps", "tool"],
-
-"tools&equipment" : ["scanner","wrench", "jack", "screwdriver", "compressor","sockets", "screwdrivers", "floor jack", "torque wrench"]
 }
 categories = {
         "Car Care": ["wax", "polish", "cleaner", "shampoo", "detailing"],
@@ -103,8 +99,11 @@ def record_search():
     data = request.get_json()
     print(data)
     search_phrase = data.get('search_phrase')
+    year = data.get('year')
+    carmodel = data.get('carmodel')
     user_id = data.get('user_id')
     category = get_category(search_phrase)
+    search_phrase = year or "" + carmodel or "" + search_phrase
     response = insert_search_data(user_id,search_phrase,category if len(category)>1 else "")
     return jsonify({"status": response})
 
@@ -119,33 +118,32 @@ def show_searches(id):
 @app.route('/get_category_recommendations',methods=['GET'])
 def show_category_recommendations():
     data_str = request.headers.get('data')
+    print(data_str)
     top_categories = json.loads(data_str)
     first_three = {} 
-    for i,category in enumerate(top_categories):
+    
+
+    for i, category in enumerate(top_categories):
         print(category)
         filepath = f"./amazon_data/{category['category']}.csv"
-        if os.path.exists(filepath) and i<len(top_categories):
+        if os.path.exists(filepath):
             with open(filepath, mode='r', encoding='utf-8') as file:
                 csvFile = csv.DictReader(file)
-                first_three[f"{category['category']}"] = list(csvFile)[:3]
-                # first_three.append(list(csvFile)[i])
-                if len(first_three) >= 3:
-                        break 
-                # for  row in csvFile):
-                    # if i >= 3:
-                    #     break
-                    # if 'title' in row and 'image_url' in row and 'price' in row:
-                    #     print(row["price"])
-                    #     item = {
-                    #         'title': row['title'].split(" ")[4].join(" "),
-                    #         'image_url': row['image_url'],
-                    #         'price': row['price']
-                    #     }
-                    # first_three_items.append(item)
+                first_three[category['category']] = list(csvFile)[:3]
         else:
-             print(f"File not found: {filepath}")
+            print(f"File not found: {filepath}")
+
     print(first_three)
     return first_three
+@app.route('/create_user',methods=['POST'])
+def create_user():
+    data = request.get_json()
+    email = data['email']
+    number = data['phone_number']
+    role = data['role']
+    id = create_new_user(email,number,role)
+    return "inserted" if id else "not inserted"
+
 
 @app.route('/get_top_searches',methods=['GET'])
 def get_highest_searches():
@@ -184,7 +182,21 @@ def get_category(search_term):
             print(category)
     print(matched_categories)
     return matched_categories[0] if matched_categories else ""
-
+def find_category_recommendations(categories):
+    first_three = {}
+    for i,category in enumerate(categories):
+        print(category)
+        filepath = f"./amazon_data/{category['category']}.csv"
+        if os.path.exists(filepath) and i<len(categories):
+            with open(filepath, mode='r', encoding='utf-8') as file:
+                csvFile = csv.DictReader(file)
+                first_three[f"{category['category']}"] = list(csvFile)[:3]
+                # first_three.append(list(csvFile)[i])
+                if len(first_three) >= 3:
+                        break 
+        else:
+             print(f"File not found: {filepath}")
+    return first_three
 def sort_user_recommendations(search):
     headers = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"

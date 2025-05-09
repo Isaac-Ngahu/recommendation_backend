@@ -20,7 +20,19 @@ def get_top_searches():
         print("Constraint violation:", e)
     except psycopg2.OperationalError as e:
         print("Database connection problem:", e)
-
+def create_new_user(email,phone_number,role):
+    try:
+        sql = "INSERT INTO users (email,phone_number,role) VALUES(%s,%s,%s) RETURNING id"
+        values = (email,phone_number,role)
+        cursor.execute(sql,values)
+        user_id = cursor.fetchone()[0]
+        print(user_id)
+        return user_id
+    except psycopg2.IntegrityError as e:
+            connection.rollback()
+            print("Constraint violation:", e)
+    except psycopg2.OperationalError as e:
+        print("Database connection problem:", e)
 def get_top_categories():
        try:
         sql = "SELECT id,search_category,category_count FROM category WHERE category_count>2 ORDER BY created_at DESC LIMIT 3"
@@ -37,7 +49,7 @@ def get_top_categories():
            print("Database connection problem:", e)  
 def get_buyer_searches(user_id):
     try:
-        sql = "SELECT search FROM search WHERE user_id=%s ORDER BY created_at DESC LIMIT 3"
+        sql = "SELECT search FROM search WHERE user_id=%s ORDER BY created_at DESC LIMIT 5"
         value = (user_id,)
         cursor.execute(sql, value)
         results = cursor.fetchall()
